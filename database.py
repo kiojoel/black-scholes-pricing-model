@@ -72,8 +72,8 @@ if __name__ == '__main__':
   setup_database()
 
   print("\n--- Adding Sample Data ---")
-  add_option('AAPL', 'call', 180.0, '2024-12-20')
-  add_option('GOOG', 'put', 140.0, '2024-09-20')
+  add_option('AAPL', 'call', 180.0, '2026-12-18')
+  add_option('GOOG', 'put', 140.0, '2026-09-18')
 
   print("\n--- Current options in database ---")
   all_options = get_all_options()
