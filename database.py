@@ -18,6 +18,23 @@ CREATE TABLE IF NOT EXISTS options_data(
                    );
 """)
 
+
+    cursor.execute("""
+          CREATE TABLE IF NOT EXISTS calculated_prices (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              option_id INTEGER NOT NULL,
+              calculation_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              theoretical_price REAL NOT NULL,
+              underlying_price REAL NOT NULL,
+              delta REAL,
+              gamma REAL,
+              vega REAL,
+              theta REAL,
+              rho REAL,
+              FOREIGN KEY (option_id) REFERENCES options_data (id)
+          );
+      """)
+
     conn.commit()
     print("Database setup complete. Table 'options_data' is ready.")
 
@@ -63,6 +80,31 @@ def get_all_options():
         print(f"Error fetching options: {e}")
         return []
    finally:
+        if conn:
+            conn.close()
+
+
+def save_calculation_result(option_id, price, S, greeks):
+    """Saves a single calculation result to the database."""
+    conn = sqlite3.connect(DB_NAME)
+    sql = ''' INSERT INTO calculated_prices(option_id, theoretical_price, underlying_price, delta, gamma, vega, theta, rho)
+              VALUES(?,?,?,?,?,?,?,?) '''
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, (
+            option_id,
+            price,
+            S,
+            greeks['delta'],
+            greeks['gamma'],
+            greeks['vega'],
+            greeks['theta'],
+            greeks['rho']
+        ))
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Error saving calculation: {e}")
+    finally:
         if conn:
             conn.close()
 

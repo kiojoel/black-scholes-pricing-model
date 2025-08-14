@@ -3,7 +3,7 @@ import numpy as np
 import yfinance as yf
 from datetime import datetime
 from pricer import BlackScholesPricer
-from database import get_all_options
+from database import get_all_options, save_calculation_result, setup_database
 
 
 def get_live_market_data(ticker_symbol):
@@ -14,7 +14,7 @@ def get_live_market_data(ticker_symbol):
   hist = ticker.history(period="1d")
   if hist.empty:
       raise ValueError(f"Could not get price for {ticker_symbol}. Is the ticker correct?")
-  current_price = hist['Close'][0]
+  current_price = hist['Close'].iloc[0]
 
   # Get historical data for the last year to calculate volatility
   hist_data = ticker.history(period="1y")
@@ -47,6 +47,8 @@ def calculate_time_to_expiration(exp_date_str):
 
 
 def main():
+  setup_database()
+
   # Set a single risk-free rate for all calculations
   RISK_FREE_RATE = 0.05
 
@@ -61,6 +63,7 @@ def main():
 
   for option in options_to_price:
       ticker = option['ticker']
+      option_id = option['id']
       try:
             # Get live market data for the specific ticker
             market_data = get_live_market_data(ticker)
@@ -78,6 +81,10 @@ def main():
 
       calculated_price = pricer_instance.price()
       calculated_greeks = pricer_instance.get_all_greeks()
+
+
+      print(f"  > Saving results for {ticker} option ID {option_id}...")
+      save_calculation_result(option_id, calculated_price, S, calculated_greeks)
 
       result_row = {
           'Ticker': ticker,
