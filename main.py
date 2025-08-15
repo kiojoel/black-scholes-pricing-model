@@ -44,20 +44,34 @@ def calculate_time_to_expiration(exp_date_str):
 
   return max(time_delta.days / 365.25, 1e-12)
 
+def get_risk_free_rate(maturity_days):
+    """Fetch actual treasury rates"""
+    if maturity_days <= 90:
+        ticker = "^IRX"
+    elif maturity_days <= 365:
+        ticker = "^TNX"
+
+    rate_data = yf.Ticker(ticker).history(period="5d")
+    return rate_data['Close'].iloc[-1] / 100
 
 
-def main():
+
+def run_calculations():
+  """
+  Fetches options, gets live data, calculates
+  prices/greeks, saves them, and returns a results DataFrame.
+  """
   setup_database()
 
   # Set a single risk-free rate for all calculations
-  RISK_FREE_RATE = 0.05
+  RISK_FREE_RATE = get_risk_free_rate(maturity_days=365)
 
   print("Fetching options from the database...")
   options_to_price = get_all_options()
 
   if not options_to_price:
       print("No options in Database.")
-      return
+      return pd.DataFrame()
 
   results = []
 
@@ -101,11 +115,5 @@ def main():
       }
       results.append(result_row)
 
-  if results:
-      df = pd.DataFrame(results)
-      print("\nLive Black-Scholes Pricing & Greeks Results")
-      print(df.to_string())
-
-
-if __name__ == '__main__':
-    main()
+  df = pd.DataFrame(results)
+  return df
