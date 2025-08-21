@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
-from main import run_calculations, get_live_market_data
+from main import run_calculations, get_live_market_data, scenario_analysis
 from pricer import BlackScholesPricer
 from datetime import date, timedelta
 
@@ -230,6 +230,37 @@ if st.button("🧮 Calculate Option Price", type="primary", use_container_width=
             **Rho (ρ)**: <span class="{rho_color}">{rho_val:.4f}</span>
             *Sensitivity to 1% rate change*
             """, unsafe_allow_html=True)
+
+        # --- SCENARIO ANALYSIS ---
+        st.markdown("---")
+        st.subheader("🔎 Scenario Analysis")
+
+        # Create a range of stock prices around the current price
+    current_price = s_input
+    price_range = np.linspace(current_price * 0.75, current_price * 1.25, 50) # -25% to +25%
+
+    # Run the analysis
+    scenario_df = scenario_analysis(pricer, price_range)
+
+    # Create an interactive Plotly chart
+    fig = px.line(
+        scenario_df,
+        x='Stock Price',
+        y='P&L',
+        title='Option P&L vs. Underlying Stock Price',
+        labels={'Stock Price': 'Underlying Stock Price ($)', 'P&L': 'Profit / Loss ($)'}
+    )
+
+    # Add a horizontal line at P&L = 0 (breakeven point relative to initial price)
+    fig.add_hline(y=0, line_dash="dash", line_color="gray")
+
+    # Add a vertical line at the current stock price
+    fig.add_vline(x=current_price, line_dash="dash", line_color="red", annotation_text="Current Price")
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    with st.expander("View Scenario Data Table"):
+        st.dataframe(scenario_df)
 
 
 
