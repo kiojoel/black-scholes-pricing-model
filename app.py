@@ -3,7 +3,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
-from main import run_calculations, get_live_market_data, scenario_analysis
+from main import run_calculations, get_live_market_data
+from analysis import scenario_analysis, implied_volatility
 from pricer import BlackScholesPricer
 from datetime import date, timedelta
 
@@ -130,6 +131,45 @@ with col2:
     # Show time to expiration
     days_to_exp = (t_input_date - today).days
     st.info(f"⏱️ Time to expiration: **{days_to_exp} days** ({days_to_exp/365:.3f} years)")
+
+    with st.expander("🧮 Calculate Implied Volatility from Market Price"):
+        # Input for the market price
+        market_price_input = st.number_input(
+            "Enter the Option's Current Market Price ($)",
+            value=10.0,
+            min_value=0.01,
+            format="%.2f",
+            help="The price you see on your brokerage platform."
+        )
+
+        # A button within the expander to trigger the calculation
+        if st.button("Calculate IV"):
+            try:
+                # We use all the other inputs from the main UI (s_input, k_input, etc.)
+                T = days_to_exp / 365.25
+
+                with st.spinner("Calculating Implied Volatility..."):
+                    iv = implied_volatility(
+                        market_price=market_price_input,
+                        S=s_input,
+                        K=k_input,
+                        T=max(T, 1e-8),
+                        r=r_input,
+                        option_type=option_type_input.lower()
+                    )
+
+                st.metric("Calculated Implied Volatility (IV)", f"{iv:.2%}")
+
+                # Provide valuable context by comparing IV to Historical Volatility
+                hist_vol = sigma_input # sigma_input holds the calculated historical volatility
+                vol_premium = iv - hist_vol
+
+                st.info(f"Historical Volatility is **{hist_vol:.2%}**. The market is implying a volatility that is **{abs(vol_premium):.2%}** {'higher' if vol_premium > 0 else 'lower'} than the stock's historical average.")
+
+            except Exception as e:
+                st.error(f"Could not calculate Implied Volatility. Error: {e}")
+
+        st.divider() # Another horizontal line
 
 # Calculate button
 st.markdown("---")
