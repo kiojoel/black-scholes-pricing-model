@@ -166,6 +166,39 @@ def create_portfolio(name, description=""):
         if conn:
             conn.close()
 
+def add_position(portfolio_id, ticker, quantity, asset_type, strike_price=None, expiration_date=None):
+    """Adds a new position to a specific portfolio."""
+    conn = sqlite3.connect(DB_NAME)
+    sql = ''' INSERT INTO positions(portfolio_id, ticker, quantity, asset_type, strike_price, expiration_date)
+              VALUES(?,?,?,?,?,?) '''
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, (portfolio_id, ticker, quantity, asset_type, strike_price, expiration_date))
+        conn.commit()
+        print(f"Added {quantity} {ticker} {asset_type} to portfolio ID {portfolio_id}")
+        return cursor.lastrowid
+    except sqlite3.Error as e:
+        print(f"Error adding position: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+def get_positions_for_portfolio(portfolio_id):
+    """Queries all positions for a given portfolio_id."""
+    conn = sqlite3.connect(DB_NAME)
+    try:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM positions WHERE portfolio_id = ? ORDER BY ticker", (portfolio_id,))
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+    except sqlite3.Error as e:
+        print(f"Error fetching positions: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
 
 
 if __name__ == '__main__':
@@ -176,11 +209,32 @@ if __name__ == '__main__':
 
     setup_database()
 
-    print("\n--- Testing Portfolio Creation ---")
     create_portfolio("My Options Plays", "A portfolio for speculative call and put options.")
     create_portfolio("Long Term Holdings")
 
     print("\n--- Current Portfolios in Database ---")
-    all_portfolios = get_portfolios()
-    for portfolio in all_portfolios:
-        print(portfolio)
+    portfolios = get_portfolios()
+    for p in portfolios:
+        print(p)
+
+    # Find the ID of our default portfolio by looping and checking the name
+    default_portfolio_id = None
+    for p in portfolios:
+        if p['name'] == 'My First Portfolio':
+            default_portfolio_id = p['id']
+            break
+
+    # Proceed only if we successfully found the portfolio
+    if default_portfolio_id is not None:
+        print(f"\n--- Adding positions to portfolio: 'My First Portfolio' (ID: {default_portfolio_id}) ---")
+
+        add_position(default_portfolio_id, 'NVDA', 100, 'stock')
+        add_position(default_portfolio_id, 'TSLA', 500, 'call', strike_price=350.0, expiration_date='2026-03-20')
+        add_position(default_portfolio_id, 'AAPL', -1000, 'put', strike_price=180.0, expiration_date='2026-06-19')
+
+        print(f"\n--- Verifying positions in portfolio ID: {default_portfolio_id} ---")
+        positions = get_positions_for_portfolio(default_portfolio_id)
+        for pos in positions:
+            print(pos)
+    else:
+        print("\nCould not find the 'My First Portfolio' to add positions to.")
