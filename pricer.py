@@ -97,29 +97,3 @@ class BlackScholesPricer:
             'theta': self.theta(),
             'rho': self.rho()
         }
-
-
-
-
-""" if __name__ == '__main__':
-    # Test a Call Option
-    # Inputs: Stock Price=100, Strike=105, Time=1 year, Rate=5%, Volatility=20%
-    call_pricer = BlackScholesPricer(S=100, K=105, T=1, r=0.05, sigma=0.20, option_type='call')
-
-    price = call_pricer.price()
-    greeks = call_pricer.get_all_greeks()
-
-    print("Call Option")
-    print(f"Price: {price:.2f}")
-    print("Greeks:")
-    for greek, value in greeks.items():
-        # Theta is often quoted per day, Vega per 1% change.
-        if greek == 'theta':
-            # The formula gives annual theta, so we divide by 365
-            print(f"  {greek.capitalize()}: {value/365:.4f} (per day)")
-        elif greek in ['vega', 'rho']:
-            # The formula gives the change per 1.0 move
-            # Divide by 100 to get the value per 1% change.
-             print(f"  {greek.capitalize()}: {value/100:.4f} (per 1% change)")
-        else:
-            print(f"  {greek.capitalize()}: {value:.4f}") """

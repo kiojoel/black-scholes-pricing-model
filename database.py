@@ -2,6 +2,7 @@ import sqlite3
 
 DB_NAME = 'options.db'
 
+
 def setup_database():
   conn = sqlite3.connect(DB_NAME)
 
@@ -34,6 +35,29 @@ CREATE TABLE IF NOT EXISTS options_data(
               FOREIGN KEY (option_id) REFERENCES options_data (id)
           );
       """)
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS portfolios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT
+            );
+        """)
+
+    cursor.execute("""
+          CREATE TABLE IF NOT EXISTS positions (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              portfolio_id INTEGER NOT NULL,
+              ticker TEXT NOT NULL,
+              quantity INTEGER NOT NULL, -- Positive for long, negative for short
+              asset_type TEXT CHECK(asset_type IN ('call', 'put', 'stock')) NOT NULL,
+              strike_price REAL, -- Can be NULL for stocks
+              expiration_date TEXT, -- Can be NULL for stocks
+              FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)
+          );
+      """)
+
+    cursor.execute("INSERT OR IGNORE INTO portfolios (id, name, description) VALUES (?, ?, ?)",
+                       (1, 'My First Portfolio', 'A default portfolio for tracking positions.'))
 
     conn.commit()
     print("Database setup complete. Table 'options_data' is ready.")
@@ -109,15 +133,54 @@ def save_calculation_result(option_id, price, S, greeks):
             conn.close()
 
 
+def get_portfolios():
+    """Queries all portfolios from the database."""
+    conn = sqlite3.connect(DB_NAME)
+    try:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM portfolios ORDER BY name")
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+    except sqlite3.Error as e:
+        print(f"Error fetching portfolios: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+def create_portfolio(name, description=""):
+    """Creates a new portfolio in the database."""
+    conn = sqlite3.connect(DB_NAME)
+    sql = ''' INSERT INTO portfolios(name, description) VALUES(?,?) '''
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql, (name, description))
+        conn.commit()
+        print(f"Created portfolio: {name}")
+        return cursor.lastrowid
+    except sqlite3.Error as e:
+        print(f"Error creating portfolio: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
 
 if __name__ == '__main__':
-  setup_database()
+    import os
+    if os.path.exists(DB_NAME):
+        os.remove(DB_NAME)
+        print(f"Removed old {DB_NAME} for a fresh start.")
 
-  print("\n--- Adding Sample Data ---")
-  add_option('AAPL', 'call', 180.0, '2026-12-18')
-  add_option('GOOG', 'put', 140.0, '2026-09-18')
+    setup_database()
 
-  print("\n--- Current options in database ---")
-  all_options = get_all_options()
-  for option in all_options:
-      print(option)
+    print("\n--- Testing Portfolio Creation ---")
+    create_portfolio("My Options Plays", "A portfolio for speculative call and put options.")
+    create_portfolio("Long Term Holdings")
+
+    print("\n--- Current Portfolios in Database ---")
+    all_portfolios = get_portfolios()
+    for portfolio in all_portfolios:
+        print(portfolio)
